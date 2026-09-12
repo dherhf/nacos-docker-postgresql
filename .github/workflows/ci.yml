@@ -2,7 +2,7 @@ name: CI
 
 on:
   pull_request:
-    branches: [master]
+    branches: [ master ]
 
 jobs:
   config-test:
@@ -18,22 +18,15 @@ jobs:
   build-test:
     name: Build Image
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        include:
-          - name: standard
-            file: build/Dockerfile
-          - name: slim
-            file: build/Dockerfile.Slim
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
-      - name: Build ${{ matrix.name }}
+      - name: Build standard image
         uses: docker/build-push-action@v6
         with:
           context: build
-          file: ${{ matrix.file }}
+          file: build/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: false
           load: false
