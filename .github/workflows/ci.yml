@@ -31,7 +31,6 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: false
           load: false
-
   smoke-test:
     name: Smoke Test
     runs-on: ubuntu-latest
@@ -47,10 +46,38 @@ jobs:
           push: false
           load: true
           tags: nacos-smoke:test
+      - name: Prepare Postgres schema
+        run: |
+          mkdir -p init-db
+          curl -fsSL -o init-db/nacos-pg.sql https://raw.githubusercontent.com/alibaba/nacos/develop/plugin-default-impl/nacos-default-datasource-plugin/nacos-datasource-plugin-postgresql/src/main/resources/META-INF/pg-schema.sql
+      - name: Create Docker network
+        run: docker network create nacos-net
+
       - name: Run smoke test
         run: |
+          docker run -d --name postgres-test \
+            --network nacos-net \
+            -e POSTGRES_USER=nacos \
+            -e POSTGRES_PASSWORD=nacos_password \
+            -e POSTGRES_DB=nacos \
+            -v $PWD/init-db:/docker-entrypoint-initdb.d \
+            postgres:16
+          
+          echo "Waiting for Postgres to initialize schema..."
+          sleep 10 
+          until docker exec postgres-test pg_isready -U nacos -d nacos > /dev/null 2>&1; do
+            sleep 2
+          done
+          echo "Postgres is ready."
+
           docker run -d --name nacos-test \
+            --network nacos-net \
             -e MODE=standalone \
+            -e POSTGRESQL_SERVICE_HOST=postgres-test \
+            -e POSTGRESQL_SERVICE_PORT=5432 \
+            -e POSTGRESQL_SERVICE_USER=nacos \
+            -e POSTGRESQL_SERVICE_PASSWORD=nacos_password \          
+            -e POSTGRESQL_SERVICE_DB_NAME=nacos \
             -e NACOS_AUTH_TOKEN=VGhpc0lzTXlDdXN0b21TZWNyZXRLZXkwMTIzNDU2Nzg= \
             -e NACOS_AUTH_IDENTITY_KEY=test \
             -e NACOS_AUTH_IDENTITY_VALUE=test \
@@ -65,8 +92,14 @@ jobs:
             sleep 2
           done
           echo "::error::Nacos failed to start within 120s"
+          echo "--- Postgres Logs ---"
+          docker logs postgres-test
+          echo "--- Nacos Logs ---"
           docker logs nacos-test
           exit 1
+
       - name: Cleanup
         if: always()
-        run: docker rm -f nacos-test 2>/dev/null || true
+        run: |
+          docker rm -f nacos-test postgres-test 2>/dev/null || true
+          docker network rm nacos-net 2>/dev/null || true
