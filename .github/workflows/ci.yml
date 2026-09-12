@@ -76,7 +76,7 @@ jobs:
             -e POSTGRESQL_SERVICE_HOST=postgres-test \
             -e POSTGRESQL_SERVICE_PORT=5432 \
             -e POSTGRESQL_SERVICE_USER=nacos \
-            -e POSTGRESQL_SERVICE_PASSWORD=nacos_password \          
+            -e POSTGRESQL_SERVICE_PASSWORD=nacos_password \
             -e POSTGRESQL_SERVICE_DB_NAME=nacos \
             -e NACOS_AUTH_TOKEN=VGhpc0lzTXlDdXN0b21TZWNyZXRLZXkwMTIzNDU2Nzg= \
             -e NACOS_AUTH_IDENTITY_KEY=test \
