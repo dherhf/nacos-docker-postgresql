@@ -1,0 +1,53 @@
+services:
+  nacos:
+    image: dherhf/nacos-postgresql:${NACOS_VERSION}
+    container_name: nacos
+    environment:
+      - MODE=standalone
+      - POSTGRESQL_SERVICE_HOST=postgresql
+      - POSTGRESQL_SERVICE_PORT=5432
+      - POSTGRESQL_SERVICE_DB_NAME=nacos
+      - POSTGRESQL_SERVICE_USER=nacos
+      - POSTGRESQL_SERVICE_PASSWORD=nacos_password
+      - NACOS_AUTH_TOKEN=VGhpc0lzTXlDdXN0b21TZWNyZXRLZXkwMTIzNDU2Nzg=
+      - NACOS_AUTH_IDENTITY_KEY=example
+      - NACOS_AUTH_IDENTITY_VALUE=example
+    ports:
+      - "8080:8080"
+      - "8848:8848"
+      - "9848:9848"
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - nacos-net
+
+  postgresql:
+    image: postgres:latest
+    container_name: nacos-postgresql
+    environment:
+      POSTGRES_USER: nacos
+      POSTGRES_PASSWORD: nacos_password
+      POSTGRES_DB: nacos
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgresql_data:/var/lib/postgresql
+      - ./pg-init/pg-schema.sql:/docker-entrypoint-initdb.d/nacos-schema.sql
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U nacos -d nacos" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - nacos-net
+
+volumes:
+  postgresql_data:
+    driver: local
+
+networks:
+  nacos-net:
+    driver: bridge

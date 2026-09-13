@@ -1,0 +1,18 @@
+services:
+  nacos:
+    image: dherhf/nacos-postgresql:${NACOS_VERSION}
+    container_name: nacos
+    environment:
+      - MODE=standalone
+      - POSTGRESQL_SERVICE_HOST=postgresql_ip
+      - POSTGRESQL_SERVICE_PORT=5432
+      - POSTGRESQL_SERVICE_DB_NAME=nacos
+      - POSTGRESQL_SERVICE_USER=nacos
+      - POSTGRESQL_SERVICE_PASSWORD=nacos_password
+      - NACOS_AUTH_TOKEN=VGhpc0lzTXlDdXN0b21TZWNyZXRLZXkwMTIzNDU2Nzg=
+      - NACOS_AUTH_IDENTITY_KEY=example
+      - NACOS_AUTH_IDENTITY_VALUE=example
+    ports:
+      - "8080:8080"
+      - "8848:8848"
+      - "9848:9848"

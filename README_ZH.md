@@ -1,8 +1,8 @@
-# Nacos Docker
+# Nacos Docker (PostgreSQL)
 
-![Docker Pulls](https://img.shields.io/docker/pulls/nacos/nacos-server.svg?maxAge=60480)
+![Docker Pulls](https://img.shields.io/docker/pulls/dherhf/nacos-postgresql.svg?maxAge=60480)
 
-本项目是 [Nacos](https://github.com/alibaba/nacos) Server的docker镜像的build源码,以及Nacos server 在docker的单机和集群的运行例子.
+本项目是 [nacos-docker](https://github.com/nacos-group/nacos-docker) 的 PostgreSQL 定制版，用于构建以 PostgreSQL 作为数据源的 [Nacos](https://github.com/alibaba/nacos) Server Docker 镜像，镜像发布为 `dherhf/nacos-postgresql`。
 
 [**English**](README.md)
 
@@ -26,7 +26,7 @@ server identity；仓库中提交的凭据仅用于本地示例，不得在生�
 
 * build：nacos 镜像制作的源码
 * env: docker compose 环境变量文件
-* example: docker-compose编排例子
+* example: Nacos Server + PostgreSQL 的 docker-compose 编排例子，包含 PostgreSQL 数据库脚本及其初始化脚本
 
 ## 运行环境
 
@@ -34,54 +34,41 @@ server identity；仓库中提交的凭据仅用于本地示例，不得在生�
 
 ### 注意事项
 
-* 从最新的nacos:nacos-server/latest
-  镜像以后,移除了数据库主从镜像,具体原因请参考[移除主从镜像配置](https://github.com/nacos-group/nacos-docker/wiki/%E7%A7%BB%E9%99%A4%E6%95%B0%E6%8D%AE%E5%BA%93%E4%B8%BB%E4%BB%8E%E9%95%9C%E5%83%8F%E9%85%8D%E7%BD%AE)
-* 从Nacos 1.3.1版本开始,数据库存储已经升级到8.0, 并且它向下兼容
-* 例子演示中使用的数据库是为了方便定制了官方Mysql镜像, 自动初始化的数据库脚本.
-* 如果你使用自定义数据库, 第一次启动Nacos前需要手动初始化 [数据库脚本](https://github.com/alibaba/nacos/blob/develop/plugin-default-impl/nacos-default-datasource-plugin/nacos-datasource-plugin-mysql/src/main/resources/META-INF/mysql-schema.sql)
+* 本定制版仅支持 **Nacos 3.x** + **PostgreSQL** 数据源。
+* 首次启动 Nacos 前必须初始化 PostgreSQL 数据库脚本：
+  * `example/pg-nacos-init.sh` 会根据 `NACOS_VERSION` 下载对应版本的数据库脚本到 `example/pg-init/pg-schema.sql`
+  * `example/pg-init/pg-schema.sql` 已提交在仓库中，`standalone-postgresql.yaml` 会直接使用
+  * 如果你使用自定义数据库, 第一次启动Nacos前需要手动初始化 [PostgreSQL 数据库脚本](https://github.com/alibaba/nacos/blob/develop/plugin-default-impl/nacos-default-datasource-plugin/nacos-datasource-plugin-postgresql/src/main/resources/META-INF/pg-schema.sql)
 
 ## 快速开始
 
-### Nacos v3.x
+### Nacos v3.x + PostgreSQL
 
 ```shell
-docker run --name nacos-standalone-derby \
+docker run --name nacos-standalone-postgresql \
     -e MODE=standalone \
+    -e POSTGRESQL_SERVICE_HOST=${your_postgresql_host} \
+    -e POSTGRESQL_SERVICE_PORT=5432 \
+    -e POSTGRESQL_SERVICE_DB_NAME=nacos \
+    -e POSTGRESQL_SERVICE_USER=${your_postgresql_user} \
+    -e POSTGRESQL_SERVICE_PASSWORD=${your_postgresql_password} \
     -e NACOS_AUTH_TOKEN=${your_nacos_auth_secret_token} \
     -e NACOS_AUTH_IDENTITY_KEY=${your_nacos_server_identity_key} \
     -e NACOS_AUTH_IDENTITY_VALUE=${your_nacos_server_identity_value} \
     -p 8080:8080 \
     -p 8848:8848 \
     -p 9848:9848 \
-    -d nacos/nacos-server:latest
+    -d dherhf/nacos-postgresql:latest
 ```
 
-### Nacos v2.x
-
-```shell
-docker run --name nacos-standalone-derby-v2.5.1 \
-    -e MODE=standalone \
-    -e NACOS_AUTH_ENABLE=true \
-    -e NACOS_AUTH_TOKEN=${your_nacos_auth_secret_token} \
-    -e NACOS_AUTH_IDENTITY_KEY=${your_nacos_server_identity_key} \
-    -e NACOS_AUTH_IDENTITY_VALUE=${your_nacos_server_identity_value} \
-    -p 8848:8848 \
-    -p 9848:9848 \
-    -d nacos/nacos-server:v2.5.1
-```
+启动前需要先初始化 PostgreSQL 数据库脚本，参见 `example/pg-init/pg-schema.sql`。
 
 ## 其他使用方式
 
-* 提示: 你需要通过 `example/.env` 中的以下配置来更改 Compose 文件中 [Nacos 镜像版本](https://hub.docker.com/r/nacos/nacos-server/tags)。
+* 提示: 你需要通过 `example/.env` 中的以下配置来更改 Compose 文件中 [Nacos 镜像版本](https://hub.docker.com/r/dherhf/nacos-postgresql/tags)。
 
 ```dotenv
 NACOS_VERSION=v3.2.4
-```
-
-对于使用 Arm 芯片（如 M1/M2/M3 系列）的 Mac 用户，需要在支持 `arm` arch 的版本后添加 `-slim`。
-
-```dotenv
-NACOS_VERSION=v3.2.4-slim
 ```
 
 打开命令窗口执行：
@@ -89,33 +76,22 @@ NACOS_VERSION=v3.2.4-slim
 * Clone project
 
   ```powershell
-  git clone --depth 1 https://github.com/nacos-group/nacos-docker.git
-  cd nacos-docker
+  git clone --depth 1 https://github.com/dherhf/nacos-docker-postgresql.git
+  cd nacos-docker-postgresql
   ```
 
-* Standalone Derby
-
-  ```powershell
-  docker-compose -f example/standalone-derby.yaml up
-  ```
-
-* Standalone Mysql
+* Standalone PostgreSQL
 
   ```powershell
   cd example
-  ./mysql-init.sh && docker-compose -f standalone-mysql.yaml up
+  ./pg-nacos-init.sh && docker-compose -f standalone-postgresql.yaml up
   ```
-* Standalone Independent Mysql（仅支持 Nacos 3.x 版本）
+
+* Standalone Independent PostgreSQL（仅支持 Nacos 3.x 版本）
 
   ```powershell
   cd example
-  ./mysql-init.sh && docker-compose -f standalone-independent-mysql.yaml up
-  ```
-
-* docker单节点部署集群模式
-
-  ```powershell
-  docker-compose -f example/cluster-hostname.yaml up 
+  ./pg-nacos-init.sh && docker-compose -f standalone-independent-postgresql.yaml up
   ```
 
 * 登录（Nacos 3.3 及以上版本默认要求 Client API 请求携带凭据）
@@ -162,14 +138,14 @@ NACOS_VERSION=v3.2.4-slim
 | PREFER_HOST_MODE                        | 支持IP还是域名模式                                | hostname/ip 默认**IP**                                                                                                                                                                  |
 | NACOS_SERVER_PORT                       | Nacos 运行端口                                | 默认**8848**                                                                                                                                                                            |
 | NACOS_SERVER_IP                         | 多网卡模式下可以指定IP                              |                                                                                                                                                                                       |
-| SPRING_DATASOURCE_PLATFORM              | 单机模式下支持MYSQL数据库                           | mysql / 空 默认:空                                                                                                                                                                        |
-| MYSQL_SERVICE_HOST                      | 数据库 连接地址                                  |                                                                                                                                                                                       |
-| MYSQL_SERVICE_PORT                      | 数据库端口                                     | 默认 : **3306**                                                                                                                                                                         |
-| MYSQL_SERVICE_DB_NAME                   | 数据库库名                                     |                                                                                                                                                                                       |
-| MYSQL_SERVICE_USER                      | 数据库用户名                                    |                                                                                                                                                                                       |
-| MYSQL_SERVICE_PASSWORD                  | 数据库用户密码                                   |                                                                                                                                                                                       |
-| MYSQL_SERVICE_DB_PARAM                  | 数据库连接参数                                   | 默认:**characterEncoding=utf8&connectTimeout=1000&socketTimeout=3000&autoReconnect=true&useSSL=false**                                                                                  |
-| MYSQL_DATABASE_NUM                      | 数据库个数                                     | 默认:**1**                                                                                                                                                                              |
+| SPRING_DATASOURCE_PLATFORM              | 单机模式下支持PostgreSQL数据库                        | postgresql / 空 默认:**postgresql**                                                                                                                                                      |
+| POSTGRESQL_SERVICE_HOST                 | 数据库 连接地址                                  |                                                                                                                                                                                       |
+| POSTGRESQL_SERVICE_PORT                 | 数据库端口                                     | 默认 : **5432**                                                                                                                                                                         |
+| POSTGRESQL_SERVICE_DB_NAME              | 数据库库名                                     | 默认 : **nacos**                                                                                                                                                                        |
+| POSTGRESQL_SERVICE_USER                 | 数据库用户名                                    | 默认 : **nacos**                                                                                                                                                                        |
+| POSTGRESQL_SERVICE_PASSWORD             | 数据库用户密码                                   | 默认 : **nacos**                                                                                                                                                                        |
+| POSTGRESQL_DATABASE_NUM                 | 数据库个数                                     | 默认:**1**                                                                                                                                                                              |
+| POSTGRESQL_SERVICE_DB_PARAM             | 数据库连接参数                                   | 默认:**tcpKeepAlive=true&reWriteBatchedInserts=true&ApplicationName=nacos_java**                                                                                                        |
 | JVM_XMS                                 | -Xms                                      | 默认 :1g                                                                                                                                                                                |
 | JVM_XMX                                 | -Xmx                                      | 默认 :1g                                                                                                                                                                                |
 | JVM_XMN                                 | -Xmn                                      | 512m                                                                                                                                                                                  |
@@ -201,26 +177,12 @@ NACOS_VERSION=v3.2.4-slim
 
 ## 高级配置
 
-~~如果上面的属性列表无法满足你的需求时,可以挂载`custom.properties`到`/home/nacos/init.d/` 目录,然后在里面像使用Spring
-Boot的`application.properties`
-文件一样配置属性, 并且这个文件配置的属性**优先级高于application.properties**~~
-
-如果你有很多自定义配置的需求,强烈建议在生产环境对application.properties文件进行挂卷定义.
-
-举个例子:
-
-```docker
-docker run --name nacos-standalone -e MODE=standalone -v /path/application.properties:/home/nacos/conf/application.properties -p 8848:8848 -d -p 9848:9848  nacos/nacos-server:2.1.1
-```
+如果你有很多自定义配置的需求,强烈建议在生产环境对application.properties文件进行挂卷定义，例如挂载到 `/home/nacos/conf/application.properties`。
 
 如果你需要在不重建镜像的情况下加载额外的插件 jar 或依赖 jar，可以把这些目录挂载到容器内，
 然后通过 `NACOS_EXT_PLUGIN_DIRS` 追加到 `loader.path`。
 
 举个例子:
-
-```docker
-docker-compose -f example/custom-plugin-dir.yaml up -d
-```
 
 ```docker
 docker run --name nacos-standalone \
@@ -234,7 +196,7 @@ docker run --name nacos-standalone \
   -p 8080:8080 \
   -p 8848:8848 \
   -p 9848:9848 \
-  -d nacos/nacos-server:latest
+  -d dherhf/nacos-postgresql:latest
 ```
 
 这个能力适合插件 jar 和运行时依赖 jar 需要分别挂载的场景。例如 LDAP 部署可以把 LDAP
